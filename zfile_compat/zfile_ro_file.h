@@ -60,6 +60,7 @@
 	    static const uint32_t HT_SPACE = 4096;
 	    static const uint32_t ZF_SPACE = 512;
 
+const static size_t PARTIAL_OFFSET_MAX = 200;
 const static size_t MAX_READ_SIZE     = 65536; // 64K
 const static size_t BUF_SIZE = 512;
 const static uint32_t NOI_WELL_KNOWN_PRIME = 100007;
@@ -105,7 +106,7 @@ struct zfile_ht {
   // offset 24, 28
   uint32_t size;  //= sizeof(HeaderTrailer);
   uint32_t flags; //= 0;
-  uint64_t padding;
+  uint64_t padding; //Don't know what is for
   // offset 32, 40, 48
   uint64_t index_offset; // in bytes
   uint64_t index_size;   // 
@@ -117,25 +118,27 @@ struct zfile_ht {
   uint8_t pad[4];
 } __attribute__((packed));
 
-
 struct jump_table {
-   uint64_t partial_offset; // 48 bits logical offset + 16 bits partial minimum
-   uint16_t delta;
-};
+  uint64_t partial_offset[ PARTIAL_OFFSET_MAX ];
+  uint16_t deltas[UINT16_MAX];
+}
+
 
 struct zfile_file {
-        struct zfile_ro_index *m_index;
+	struct zfile_ht m_ht;
+        bool m_ownership;       
+	bool valid;
+	struct jump_table m_jt;
+
+        struct  *m_index;
 	bool is_header;
 	bool is_sealed;
 	bool is_data_file;
-	struct zfile_ht m_ht;
 	uint64_t m_vsize;
-        bool m_ownership;       
         size_t m_files_count;
         size_t MAX_IO_SIZE;
         void* m_files[0];
-} __attribute__((packed));
-
+} ;
 
 // open a zfile layer
 struct zfile_ro_file* open_file(void* fd, bool ownership);
