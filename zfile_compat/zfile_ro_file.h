@@ -123,12 +123,26 @@ struct jump_table {
   uint16_t deltas[UINT16_MAX];
 }
 
+struct block_reader{
+	const struct *zfile_file;
+	off_t buf_offset;
+	bool m_verify;
+	size_t block_size;
+	size_t begin_idx;
+	size_t idx;
+	size_t end;
+	size_t end_idx; 
+	size_t c_size;
+	unsigned char m_buf[MAX_READ_SIZE];
+}
 
 struct zfile_file {
 	struct zfile_ht m_ht;
         bool m_ownership;       
 	bool valid;
 	struct jump_table m_jt;
+	struct block_reader *blk_begin;
+	struct block_reader *blk_end;
 
         struct  *m_index;
 	bool is_header;

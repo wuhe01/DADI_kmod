@@ -82,6 +82,59 @@ size_t get_max_io_size(const struct zfile_file *file) {
   return file->MAX_IO_SIZE;
 }
 
+size_t pread(struct zfile_ro* zf, void *buf, size_t count, off_t offset) {
+    struct zfile_ht m_ht = zf->m_ht;
+    if (!zf->valid)
+    {
+	PRINT_ERROR( "object invalid. %d ", zf->valid);
+	return 0;
+    }
+    if (m_ht->opt.block_size > MAX_READ_SIZE)
+    {
+	PRINT_ERROR("block size %d >  MAX_READ_SIZE", 
+                         m_ht.opt.block_size, MAX_READ_SIZE);
+	return 0;
+    }
+    if (count == 0)
+        return 0;
+
+
+    ssize_t readn = 0; // final will equal to count
+    auto start_addr = buf;
+    unsigned char raw[MAX_READ_SIZE];
+    struct block_reader *it = zf->blk_begin;
+    for (struct block_reader *it = zf->blk_bein; it != zf->blk_end; it++) {
+       if (it->cp_len == m_ht->opt.block_size) {
+	  size_t dret = LZ4_decompress_safe(blk->m_buf, 
+			  blk->c_size, 
+			  (unsigned char *)buf, 
+			  pht->opt.block_size); 
+	  if (dret == -1) {
+		  PRINT_ERROR("Decompress one block failed %d", dret);
+		  return -1;
+	  }
+       } else {
+	  size_t dret = LZ4_decompress_safe(blk->m_buf, 
+			  blk->c_size, 
+			  (unsigned char *) raw;
+			  pht->opt.block_size); 
+	  if (dret == -1) {
+		  PRINT_ERROR("Decompress one partial block failed %d", dret);
+		  return -1;
+	  }
+	  memcpy(buf, raw + it.cp_begin, it->cp_len);
+       }
+       readn += it->cp_len;
+       PRINT_INFO ("append buf, {offset %d, length %d, crc: %d}", 
+		       (off_t) buf - (off_t)start_addr, it->cp_len, it->crc32_code);
+       buf=(unsiged char*)buf + it->cp_len;
+  }
+
+  PRINT_INFO("done. ( readn : %d )", readn);
+  return readn;
+
+}
+
 size_t get_range ( size_t idx, uint64_t partial_offset[], uint16_t deltas[]) {
 
                  // return BASE  + idx % (page_size) * local_minimum + sum(delta - local_minimum)
