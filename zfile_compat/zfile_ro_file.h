@@ -118,14 +118,18 @@ struct zfile_ht {
   uint8_t pad[4];
 } __attribute__((packed));
 
+
 struct jump_table {
-  uint64_t partial_offset[ PARTIAL_OFFSET_MAX ];
+  uint64_t* partial_offset;
   uint16_t deltas[UINT16_MAX];
-}
+}; 
+
+#define MAX_READ_SIZE 64
 
 struct block_reader{
-	const struct *zfile_file;
+	struct zfile_file *zfile;
 	off_t buf_offset;
+	off_t m_offset;
 	bool m_verify;
 	size_t block_size;
 	size_t begin_idx;
@@ -133,18 +137,17 @@ struct block_reader{
 	size_t end;
 	size_t end_idx; 
 	size_t c_size;
-	unsigned char m_buf[MAX_READ_SIZE];
-}
+	//unsigned char m_buf[MAX_READ_SIZE];
+};
 
 struct zfile_file {
 	struct zfile_ht m_ht;
         bool m_ownership;       
 	bool valid;
-	struct jump_table m_jt;
+//	struct jump_table m_jt;
 	struct block_reader *blk_begin;
 	struct block_reader *blk_end;
 
-        struct  *m_index;
 	bool is_header;
 	bool is_sealed;
 	bool is_data_file;

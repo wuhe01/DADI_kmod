@@ -82,6 +82,7 @@ size_t get_max_io_size(const struct zfile_file *file) {
   return file->MAX_IO_SIZE;
 }
 
+/*
 size_t pread(struct zfile_ro* zf, void *buf, size_t count, off_t offset) {
     struct zfile_ht m_ht = zf->m_ht;
     if (!zf->valid)
@@ -103,7 +104,7 @@ size_t pread(struct zfile_ro* zf, void *buf, size_t count, off_t offset) {
     auto start_addr = buf;
     unsigned char raw[MAX_READ_SIZE];
     struct block_reader *it = zf->blk_begin;
-    for (struct block_reader *it = zf->blk_bein; it != zf->blk_end; it++) {
+    for (struct block_reader *it = zf->blk_begin; it != zf->blk_end; it++) {
        if (it->cp_len == m_ht->opt.block_size) {
 	  size_t dret = LZ4_decompress_safe(blk->m_buf, 
 			  blk->c_size, 
@@ -134,7 +135,7 @@ size_t pread(struct zfile_ro* zf, void *buf, size_t count, off_t offset) {
   return readn;
 
 }
-
+*/
 size_t get_range ( size_t idx, uint64_t partial_offset[], uint16_t deltas[]) {
 
                  // return BASE  + idx % (page_size) * local_minimum + sum(delta - local_minimum)
@@ -148,6 +149,7 @@ size_t get_range ( size_t idx, uint64_t partial_offset[], uint16_t deltas[]) {
 }
 
 int get_blocks_length( size_t begin, size_t end, uint64_t partial_offset[], uint16_t deltas[]) {
+    PRINT_INFO("begin: %d, end %d", begin, end);
     return (get_range( end, partial_offset, deltas) - get_range( begin, partial_offset, deltas));
 }
 
@@ -157,11 +159,11 @@ int read_blocks(struct zfile_ht* pht, int src,  unsigned char *dst_buf, uint64_t
     size_t begin_offset = get_range( begin, partial_offset, deltas);
     size_t read_size = end - begin ;
     PRINT_INFO("block idx: [%d, %d], start_offset: %d, read_size: %d",
-              begin, end, begin_offset, read_size);
+              begin, end, begin_offset, read_size) ;
 
     unsigned char src_buf[read_size * 2];
     size_t ret = pread(src, src_buf, read_size, begin_offset);
-    PRINT_INFO("Tesla testing %ld", begin_offset);
+    PRINT_INFO(" compressed size testing %ld", get_blocks_length(begin,end,partial_offset, deltas));
     if (ret < (ssize_t)read_size) {
       PRINT_ERROR("failed to read file header (fildes: %d).", src);
       return 0;
@@ -200,7 +202,36 @@ int read_blocks(struct zfile_ht* pht, int src,  unsigned char *dst_buf, uint64_t
 
     return readn;
 }
+/*
+int do_load_block_readers( struct zfile_file *zf) {
+ 
+  size_t i;
+  struct zfile_ht* pht = zf->m_ht;
+  struct block_reader* blk = zf->blk_begin;
+  if (!blk) {
+	  blk = malloc( sizeof(struct block_reader)) ;
+	  blk->zfile_file = zf;
+	  blk->m_verify = false;
+	  blk->block_size = pht->opt.block_size;
+	  blk->begin_idx = blk->m_offset / blk->block_size;
+	  blk->idx = blk->begin_idx;
+	  blk->end_idx = 
 
+  for ( ; blk != zf->blk_end && blk != NULL ; blk++) {
+  
+  }
+  int part_size = DEFAULT_PART_SIZE;
+  off_t offset_begin = pht->opt.dict_size + ZF_SPACE;
+  size_t n = pht->index_size;
+  PRINT_INFO("part_size:  %d, size:  %d, offset_begine: %d " , part_size, n, offset_begin );
+
+  inttype local_min = 0;
+  off_t raw_offset = offset_begin;
+  uint16_t lshift = DEFAULT_LSHIFT;
+  uint16_t last_delta;
+}
+*/
+		
 int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, int dst) {
     
   size_t i;
@@ -216,47 +247,55 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
 
   uint64_t partial_offset[ (size_t) n+1 ];
   uint16_t deltas[UINT16_MAX];
-  uint16_t pushed_delta = 0; 
+  partial_offset[0] = (raw_offset << lshift) + local_min;
+  deltas[0] = 0;
 
+  uint16_t partial_size = 1;
+  uint16_t deltas_size = 1;
+
+  
   for (i = 1; i < (size_t) n + 1 ; ++i) {
 	  //PRINT_INFO(" ibuf %d", ibuf[i-1]);
 	  raw_offset += ibuf[i - 1];
 	  last_delta = 0;
-	  //PRINT_INFO(" raw_offset %d", raw_offset);
 	  if (( i % part_size) == 0 ) {
 		  local_min = inttype_max;
+	  	  PRINT_INFO(" get  %d", i);
 		  for (ssize_t j = i; j < min(n + 1, i + part_size ); j ++ )
 			  local_min = min(ibuf[j - 1], local_min);
-   		  struct jump_table* new_entry = (struct jump_table *)_zfile_malloc(
-      			sizeof(struct jump_table));
+   		  //struct jump_table* new_entry = (struct jump_table *)_zfile_malloc(
+      		//	sizeof(struct jump_table));
   		  partial_offset[i % part_size]  = (raw_offset << lshift) + local_min;
-		  deltas[pushed_delta++] = 0;              	             
+		  partial_size++;
+		  deltas[deltas_size++] = 0;              	             
 		  last_delta = 0;
-		  PRINT_INFO( "partial_offset : %d ", new_entry->partial_offset );
+		 // PRINT_INFO( "partial_offset : %d ", new_entry->partial_offset );
 
 		  continue;
 	  }
-
+	  deltas[deltas_size++] = deltas[i-1] + ibuf[i-1] - local_min;
 	  last_delta = last_delta + ibuf[i-1] - local_min;
 
 	  PRINT_INFO("last_delta %d, iterated %i", last_delta, i);
 	 
   }
 
+  PRINT_INFO("create jump_table done, { part_count :%d, deltas_count: %d, size :%d }",
+		  partial_size, deltas_size,
+		  deltas_size * sizeof(deltas[0]) + partial_size * sizeof(partial_offset[0]));
+
   size_t raw_data_size = pht->raw_data_size;
   size_t block_size = pht->opt.block_size;
 
-  off_t read_size = (off_t) MAX_READ_SIZE;
-  unsigned char buf[MAX_READ_SIZE];
-  for (off_t offset = 0; offset < raw_data_size ; offset += read_size) {
-	size_t len = min(block_size, (size_t)raw_data_size - offset);
-        size_t readn = read_blocks(pht, src, buf, partial_offset, deltas, offset, offset + len );
-	if (readn <= 0) {
-		PRINT_ERROR("decompreassion failed , readn %d", readn);
-	} else {
-		write(dst, buf, len);
-	}
-  }  
+  PRINT_INFO("raw_data_size: %d, block_size: %d", raw_data_size, block_size);
+  for (i = 0; i < partial_size ; i++) {
+	  for ( size_t j = 0 ; j < deltas_size; j ++ ) {
+		  PRINT_INFO( "partial_offset : %d, deltas: %d", partial_offset[0], deltas[j]);
+		  PRINT_INFO( "current offset : %d", partial_offset[i] + deltas[j]);
+	  }
+	//get_blocks_length(offset, offset + read_size, partial_offset, deltas);
+	
+  }
   PRINT_INFO("DONE, check the result file", dst);
   return 0;
 }
