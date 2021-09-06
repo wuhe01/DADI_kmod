@@ -290,9 +290,48 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
   PRINT_INFO("raw_data_size: %d, block_size: %d", raw_data_size, block_size);
   for (i = 0; i < partial_size ; i++) {
 	  for ( size_t j = 0 ; j < deltas_size; j ++ ) {
-		  PRINT_INFO( "partial_offset : %d, deltas: %d", partial_offset[0], deltas[j]);
-		  PRINT_INFO( "current offset : %d", partial_offset[i] + deltas[j]);
+		  size_t start_offset, stop_offset;
+		  if (j == 0) {
+			  start_offset = 0;
+		  } else {
+			  start_offset = get_range(j-1, partial_offset, deltas );
+		  }
+		  stop_offset = get_range(j, partial_offset, deltas );
+		  PRINT_INFO( "current offset: %d, start_offset: %d", get_range(j, partial_offset, deltas), start_offset);
+		  
+      size_t length = stop_offset - start_offset;
+      PRINT_INFO("block idx: [%d, %d], length: %d",
+		      start_offset, stop_offset, length) ;
+  
+      unsigned char src_buf[length + 2];
+      size_t ret = pread(src, src_buf, length, start_offset);
+      PRINT_INFO(" compressed size testing %ld", get_blocks_length( start_offset , stop_offset,partial_offset, deltas));
+      if (ret < (ssize_t) length) {
+        PRINT_ERROR("failed to read file header (fildes: %d).", src);
+        return 0;
+      }
+  
+      unsigned char raw[MAX_READ_SIZE];
+      size_t readn = 0;
+      uint32_t src_blk_size = pht->opt.block_size;
+      uint32_t max_dst_size = LZ4_compressBound(src_blk_size);
+      unsigned char dst_buf[max_dst_size];
+      
+      int dret = LZ4_decompress_safe(src_buf, (unsigned char *)dst_buf, pht->opt.block_size, max_dst_size);
+          if (dret == -1) {
+              return -1;
+	  } else {
+	      int wret = pwrite(dst , dst_buf, HT_SPACE, HT_SPACE * j * i);
+	      if ( wret = -1 ) {
+		      PRINT_ERROR ("Faild writing file %d ", dst);
+		      return -1;
+	      } else {
+		      PRINT_INFO ( "Written the decompressed data %d", wret);
+	      }
+
 	  }
+	  }
+    
 	//get_blocks_length(offset, offset + read_size, partial_offset, deltas);
 	
   }
@@ -420,12 +459,6 @@ int main(int argc, char **argv)
         return -1;
     }
     
-    PRINT_INFO("Trying to access the fault fault %ld" , files[0]); 
-    char data[ZF_SPACE];
-    size_t readn = pread(files[0], data, ZF_SPACE, 0);
-    if (readn < ZF_SPACE) {
-       PRINT_INFO("invalid file ptr. (fildes: %d)", files[0]);
-    }
     open_ro(files[0], files[1], false, false);
     //while ((count = read(files[0], buffer, sizeof(buffer))) != 0)
     //    write(files[1], buffer, count);
