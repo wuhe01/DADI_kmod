@@ -317,20 +317,23 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
       uint32_t max_dst_size = LZ4_compressBound(src_blk_size);
       unsigned char dst_buf[max_dst_size];
       
+      PRINT_INFO("max_dst_size %d", max_dst_size);
       int dret = LZ4_decompress_safe(src_buf, (unsigned char *)dst_buf, pht->opt.block_size, max_dst_size);
+      PRINT_INFO("dst_buF: %s", dst_buf);
           if (dret == -1) {
-              return -1;
+	      PRINT_ERROR("decompress failed with return value %d ", dret);
+//              return -1;
 	  } else {
 	      int wret = pwrite(dst , dst_buf, HT_SPACE, HT_SPACE * j * i);
 	      if ( wret = -1 ) {
 		      PRINT_ERROR ("Faild writing file %d ", dst);
-		      return -1;
+//		      return -1;
 	      } else {
 		      PRINT_INFO ( "Written the decompressed data %d", wret);
 	      }
 
-	  }
-	  }
+          }
+     }
     
 	//get_blocks_length(offset, offset + read_size, partial_offset, deltas);
 	
@@ -451,7 +454,7 @@ int main(int argc, char **argv)
      } 
     
 
-    files[1] = open(argv[2], O_CREAT | S_IRUSR | S_IWUSR);
+    files[1] = open(argv[2], O_CREAT | O_TRUNC, 644);
     if (files[1] == -1) /* Check if file opened (permissions problems ...) */
     {
 	PRINT_INFO("can't open dst file %s", argv[2]);
