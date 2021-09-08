@@ -93,7 +93,7 @@ struct lsmt_ro_file {
 	bool m_ownership;
 	size_t m_files_count;
 	size_t MAX_IO_SIZE;
-	void *m_files[0];
+	//void *m_files[0];
 };
 
 int set_max_io_size(struct lsmt_ro_file *file, size_t size);

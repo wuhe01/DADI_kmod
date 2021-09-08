@@ -322,11 +322,11 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
       PRINT_INFO("dst_buF: %s", dst_buf);
           if (dret == -1) {
 	      PRINT_ERROR("decompress failed with return value %d ", dret);
-//              return -1;
+              return -1;
 	  } else {
-	      int wret = pwrite(dst , dst_buf, HT_SPACE, HT_SPACE * j * i);
-	      if ( wret = -1 ) {
-		      PRINT_ERROR ("Faild writing file %d ", dst);
+	      int wret = write(dst , dst_buf, HT_SPACE);
+	      if ( wret == -1 ) {
+		      PRINT_ERROR ("Faild writing file %d ", wret);
 //		      return -1;
 	      } else {
 		      PRINT_INFO ( "Written the decompressed data %d", wret);
@@ -454,7 +454,7 @@ int main(int argc, char **argv)
      } 
     
 
-    files[1] = open(argv[2], O_CREAT | O_TRUNC, 644);
+    files[1] = open(argv[2], O_CREAT | O_TRUNC | S_IRWXU | S_IRWXG, 644);
     if (files[1] == -1) /* Check if file opened (permissions problems ...) */
     {
 	PRINT_INFO("can't open dst file %s", argv[2]);
