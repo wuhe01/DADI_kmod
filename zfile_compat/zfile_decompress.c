@@ -285,7 +285,7 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
 
   off_t current_offset = ZF_SPACE  ;
   for (i = 0; i < (size_t) n+1; ++i ) {
-      PRINT_INFO("block idx: [%d, %d], length: %d",
+      PRINT_INFO("compressed range: [%d, %d], length: %d",
 		      current_offset, current_offset + ibuf[i], ibuf[i]) ;
   
       unsigned char src_buf[ ibuf[i]];
@@ -305,12 +305,12 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
       PRINT_INFO("max_dst_size %d", max_dst_size);
       int dret = LZ4_decompress_safe(src_buf, (unsigned char *)dst_buf, ibuf[i], max_dst_size);
 //PRINT_INFO("dst_buF: %s", dst_buf);
-          if (dret == -1) {
-	      PRINT_ERROR("decompress failed with return value %d ", dret);
-              return -1;
-	  } else {
-	      PRINT_INFO("Decompred size %d", dret);
-	  }
+      if (dret <= 0 ) {
+          PRINT_ERROR("decompress failed with return value %d ", dret);
+      //    return -1;
+      } else {
+          PRINT_INFO("Decompred size %d", dret);
+      }
 
       current_offset += ibuf[0];
   }
@@ -490,7 +490,7 @@ int main(int argc, char **argv)
     {
 	PRINT_INFO("can't open dst file %s", argv[2]);
         close(files[0]);
-        return -1;
+  //      return -1;
     }
     
     open_ro(files[0], files[1], false, false);
