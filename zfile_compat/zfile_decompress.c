@@ -288,10 +288,12 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
       PRINT_INFO("compressed range: [%d, %d], length: %d",
 		      current_offset, current_offset + ibuf[i], ibuf[i]) ;
   
-      unsigned char src_buf[ ibuf[i]];
-      size_t ret = pread(src, src_buf, ibuf[i], current_offset);
+      size_t offset = ibuf[i];
+      unsigned char src_buf[ offset ];
+      memset(src_buf, 0, offset);
+      size_t ret = pread(src, &src_buf, offset, current_offset);
       //PRINT_INFO(" compressed size testing %ld", get_blocks_length( start_offset , stop_offset,partial_offset, deltas));
-      if (ret < (ssize_t) ibuf[i]) {
+      if (ret < (ssize_t) offset) {
         PRINT_ERROR("failed to read file header (fildes: %d).", src);
         return 0;
       }
@@ -303,7 +305,7 @@ int do_build_jump_table( int src, const uint32_t *ibuf, struct zfile_ht* pht, in
       unsigned char dst_buf[max_dst_size];
       
       PRINT_INFO("max_dst_size %d", max_dst_size);
-      int dret = LZ4_decompress_safe(src_buf, (unsigned char *)dst_buf, ibuf[i], max_dst_size);
+      int dret = LZ4_decompress_safe(src_buf, (unsigned char *)dst_buf, offset, max_dst_size);
 //PRINT_INFO("dst_buF: %s", dst_buf);
       if (dret <= 0 ) {
           PRINT_ERROR("decompress failed with return value %d ", dret);
